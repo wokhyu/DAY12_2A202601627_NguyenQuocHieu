@@ -21,14 +21,32 @@
 #            docker images day12-agent:prod     # xem dung lượng
 # ═══════════════════════════════════════════════════════════════════
 
-FROM python:3.11
+FROM python:3.11-slim AS builder
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+FROM python:3.11-slim AS runtime
+
+# PYTHONUNBUFFERED: không có nó, log JSON kẹt trong buffer stdout và cloud
+# chỉ thấy log khi buffer đầy hoặc process chết.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
+COPY --from=builder /install /usr/local
 
-COPY . .
+# Tạo user trước khi copy code: layer ổn định đứng trước layer hay đổi.
+RUN useradd --create-home --uid 10001 appuser
 
-RUN pip install -r requirements.txt
+# Copy vào trong WORKDIR (/app/app, /app/utils) để `import utils` chạy được.
+COPY app ./app
+COPY utils ./utils
 
+USER appuser
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# python + urllib có sẵn trong image; curl và requests thì không.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '8000') + '/health').read()" || exit 1
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

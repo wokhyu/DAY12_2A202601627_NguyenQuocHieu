@@ -34,10 +34,33 @@ services:
       timeout: 3s
       retries: 5
 
-  # TODO (CP2): khai báo service `agent` ở đây
-  # agent:
-  #   build: .
-  #   ...
+  agent:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Nội suy từ file .env cùng thư mục — khóa không nằm trong git.
+      AGENT_API_KEY: ${AGENT_API_KEY}
+      # `redis` là tên service = hostname trong mạng của compose.
+      # localhost ở đây sẽ trỏ vào chính container agent.
+      REDIS_URL: redis://redis:6379/0
+      PORT: 8000
+      LOG_LEVEL: INFO
+    depends_on:
+      redis:
+        # Chờ Redis trả PONG thật, không chỉ chờ container khởi động.
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
 
 volumes:
   redis-data:
