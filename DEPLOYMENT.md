@@ -10,17 +10,17 @@
 
 | Mục | Nội dung |
 |-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo DAY12-...) |
+| Họ và tên | Nguyễn Quốc Hiếu |
+| Mã học viên | 2A202601627 |
+| Repo | https://github.com/wokhyu/DAY12_2A202601627_NguyenQuocHieu |
 
 ## Service
 
 | Mục | Nội dung |
 |-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+| Public URL | https://day12-agent-mglg.onrender.com |
+| Platform | Render (web service runtime Docker + Key Value `day12-redis`, region Oregon) |
+| Ngày deploy | 2026-08-10 |
 
 ## Biến Môi Trường Đã Set Trên Cloud
 
@@ -28,9 +28,9 @@ Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
 
 | Biến | Đã set | Ghi chú |
 |------|--------|---------|
-| `PORT` | ✅ | platform tự gán |
-| `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
+| `PORT` | ✅ | Render tự gán (service chạy ở cổng 10000) |
+| `AGENT_API_KEY` | ✅ | nhập trong dashboard Render, `sync: false` nên không nằm trong repo |
+| `REDIS_URL` | ✅ | Internal Connection String của service `day12-redis` trên Render |
 | `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
 | `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
 | `LOG_LEVEL` | ✅ | INFO |
@@ -70,11 +70,36 @@ done; echo
 
 ## Kết Quả Chạy Thật
 
-Dán output của các lệnh trên vào đây:
+```
+=== 1. GET /health ===
+HTTP/1.1 200 OK
+{"status":"ok","service":"day12-agent","version":"1.0.0"}
+
+=== 2. GET /ready ===
+HTTP/1.1 200 OK
+{"status":"ready","redis":true}
+
+=== 3. POST /ask (không có API key) ===
+HTTP/1.1 401 Unauthorized
+{"detail":"invalid or missing API key"}
+```
+
+Log khởi động của service trên Render (structured logging của CP1, một dòng JSON):
 
 ```
-(điền output)
+==> Checking out commit da277062f0f2a7631577aaea74ef5d1e42103a59 in branch main
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+{"event": "service_started", "level": "info", "timestamp": "2026-08-10T16:09:26.208662+00:00", "service": "day12-agent", "version": "1.0.0"}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:10000 (Press CTRL+C to quit)
+INFO:     10.238.25.124:60268 - "GET /health HTTP/1.1" 200 OK
+==> Your service is live
 ```
+
+Ghi chú: lệnh 4 và 5 cần khóa thật nên chạy ở máy cá nhân với biến
+`DEPLOY_API_KEY` trong `.env` (file này không commit), kết quả không dán vào
+đây để tránh lộ khóa.
 
 ## Ảnh Chụp Màn Hình
 
@@ -82,20 +107,3 @@ Dán output của các lệnh trên vào đây:
 
 - `screenshots/dashboard.png` — trang quản lý service trên platform
 - `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
-
----
-
-## Nếu Dùng Phương Án Dự Phòng
-
-Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng CP5 tối đa 60% điểm:
-
-1. Đặt `LOCAL_FALLBACK=true` trong `.env`
-2. Chạy `docker compose up -d` rồi kiểm tra `docker compose ps`
-3. Chụp màn hình vào `screenshots/`
-4. Chạy `pytest tests/test_cp5.py -v` — bộ test sẽ tự chuyển sang kiểm tra
-   `http://localhost:8000`
-5. Ghi rõ lý do không deploy được vào phần dưới đây:
-
-```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
-```
